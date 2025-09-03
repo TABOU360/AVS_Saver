@@ -49,45 +49,27 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // Attendre minimum 2 secondes pour l'animation
     await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
 
-    // Vérifier l'état d'authentification
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      // Utilisateur connecté, vérifier si le profil est complet
-      await _checkUserProfileAndNavigate(currentUser);
-    } else {
-      // Pas d'utilisateur connecté, aller à l'écran de connexion
-      _navigateToLogin();
-    }
-  }
-
-  Future<void> _checkUserProfileAndNavigate(User user) async {
     try {
-      // TODO: Vérifier si le profil utilisateur est complet en base
-      // Pour l'instant, on navigue directement vers l'accueil
-      _navigateToHome();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        _navigateToHome();
+      } else {
+        _navigateToLogin();
+      }
     } catch (e) {
-      // En cas d'erreur, déconnecter et aller au login
-      await FirebaseAuth.instance.signOut();
       _navigateToLogin();
     }
   }
 
   void _navigateToLogin() {
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-    }
+    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
   }
 
   void _navigateToHome() {
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
-    }
+    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.home);
   }
 
   @override
@@ -116,37 +98,48 @@ class _SplashScreenState extends State<SplashScreen>
           child: AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
-              return FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
+              return Opacity(
+                opacity: _fadeAnimation.value,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo animé
+                      // VOTRE IMAGE PERSONNALISÉE
                       Container(
-                        height: 120,
-                        width: 120,
+                        height: 150, // Ajustez la taille selon votre image
+                        width: 150,
                         decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.green.shade200,
-                              blurRadius: 20,
-                              spreadRadius: 5,
+                              blurRadius: 15,
+                              spreadRadius: 3,
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.health_and_safety,
-                          size: 60,
-                          color: Colors.green.shade600,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(25),
+                          child: Image.asset(
+                            'assets/images/Nursing.gif',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+
+                              return Container(
+                                color: Colors.green.shade100,
+                                child: Icon(
+                                  Icons.health_and_safety,
+                                  size: 60,
+                                  color: Colors.green.shade600,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 32),
 
-                      // Titre de l'app
                       Text(
                         AppConstants.appName,
                         style: TextStyle(
@@ -158,7 +151,6 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       const SizedBox(height: 8),
 
-                      // Sous-titre
                       Text(
                         'Plateforme AVS • Familles • Coordination',
                         style: TextStyle(
@@ -170,7 +162,6 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       const SizedBox(height: 48),
 
-                      // Indicateur de chargement
                       SizedBox(
                         width: 40,
                         height: 40,

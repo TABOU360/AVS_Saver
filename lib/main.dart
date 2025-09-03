@@ -1,3 +1,4 @@
+import 'package:avs_saver/screens/splash_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'core/app_routes.dart';
@@ -16,7 +17,7 @@ import 'screens/coordinator_screen.dart';
 import 'screens/admin_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'services/Background_handler.dart'; // Import ajouté
+import 'services/Background_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,8 +41,8 @@ class AVSApp extends StatelessWidget {
       title: 'AVS_Saver',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system, // Changé pour suivre le système
-      initialRoute: AppRoutes.login,
+      themeMode: ThemeMode.system,
+      home : const SplashScreen(),
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.home: (_) => const HomeScreen(),

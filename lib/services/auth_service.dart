@@ -4,72 +4,133 @@ import 'package:flutter/material.dart';
 ValueNotifier<AuthService> authService = ValueNotifier(AuthService());
 
 class AuthService {
-  final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  User? get currentUser => firebaseAuth.currentUser;
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
-  Stream<User?> get authStateChange => firebaseAuth.authStateChanges();
+  User? get currentUser => _firebaseAuth.currentUser;
+  Stream<User?> get authStateChange => _firebaseAuth.authStateChanges();
 
+  /// Connexion avec email et mot de passe
   Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
-    return await firebaseAuth.signInWithEmailAndPassword(
+    try {
+      return await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
-        password: password
-    );
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
+  /// Création de compte
   Future<UserCredential> createAccount({
     required String email,
     required String password,
   }) async {
-    return await firebaseAuth.createUserWithEmailAndPassword(
+    try {
+      return await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
-        password: password
-    );
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
+  /// Déconnexion
   Future<void> signOut() async {
-    await firebaseAuth.signOut();
+    try {
+      await _firebaseAuth.signOut();
+    } catch (e) {
+      print('Erreur lors de la déconnexion: $e');
+      rethrow;
+    }
   }
 
-  Future<UserCredential> resetPassword({
+  /// Envoi d'email de réinitialisation de mot de passe
+  Future<void> resetPassword({
     required String email,
   }) async {
-     await firebaseAuth.sendPasswordResetEmail(
-        email: email
-    );
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
-  Future<UserCredential> updateUsername({
-    required String email,
-    }) async {
-     await currentUser!.updateDisplayName(username);
+  /// Mise à jour du nom d'affichage
+  Future<void> updateUsername({
+    required String username,
+  }) async {
+    try {
+      await currentUser?.updateDisplayName(username);
+      await currentUser?.reload(); // Rechargement pour actualiser les données
+    } catch (e) {
+      print('Erreur lors de la mise à jour du nom: $e');
+      rethrow;
+    }
   }
 
-  Future<UserCredential> deleteAccount({
+  /// Suppression du compte utilisateur
+  Future<void> deleteAccount({
     required String email,
     required String password,
-    }) async {
-   AuthCredential credential = EmailAuthProvider.credential(
-       email: email,
-       password: password
-   );
-   await currentUser!.reauthenticateWithCredential(credential);
-   await currentUser!.delete();
-   await firebaseAuth.signOut();
+  }) async {
+    try {
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+
+      await currentUser?.reauthenticateWithCredential(credential);
+      await currentUser?.delete();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
   }
 
-  Future<UserCredential> resetPasswordFromCurrentPassword({
+  /// Changement de mot de passe
+  Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
     required String email,
   }) async {
-    AuthCredential credential = EmailAuthProvider.credential(
+    try {
+      AuthCredential credential = EmailAuthProvider.credential(
         email: email,
-        password: currentPassword
-    );
-    await currentUser!.reauthenticateWithCredential(credential);
-    await currentUser!.updatePassword(newPassword);
+        password: currentPassword,
+      );
+
+      await currentUser?.reauthenticateWithCredential(credential);
+      await currentUser?.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  /// Gestion centralisée des erreurs Firebase Auth
+  String _handleAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'Aucun utilisateur trouvé avec cet email.';
+      case 'wrong-password':
+        return 'Mot de passe incorrect.';
+      case 'email-already-in-use':
+        return 'Cet email est déjà utilisé.';
+      case 'weak-password':
+        return 'Le mot de passe est trop faible.';
+      case 'invalid-email':
+        return 'Email invalide.';
+      case 'user-disabled':
+        return 'Ce compte utilisateur a été désactivé.';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Réessayez plus tard.';
+      case 'requires-recent-login':
+        return 'Cette action nécessite une connexion récente.';
+      default:
+        return 'Erreur d\'authentification: ${e.message}';
+    }
   }
 }

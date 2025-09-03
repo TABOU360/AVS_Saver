@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
@@ -82,7 +81,7 @@ class _CustomTextFieldState extends State<CustomTextField>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme = Theme.of(context); // Correction de la déclaration
 
     return Focus(
       onFocusChange: _onFocusChange,

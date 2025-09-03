@@ -27,13 +27,19 @@ class HomeScreen extends StatelessWidget {
                     crossAxisCount: 2,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
+                      if (appUser.role == 'admin') {
+                        children: [
+                        FuturCard(icon: Icons.admin_panel_settings, title: 'Admin', onTap: () => Navigator.pushNamed(context, AppRoutes.admin)),
+                ],
+                    } else if (appUser.role == 'avs') {
+
+              }
                     children: [
                       FuturCard(icon: Icons.search, title: 'Trouver un·e AVS', onTap: () => Navigator.pushNamed(context, AppRoutes.browseAvs)),
                       FuturCard(icon: Icons.people, title: 'Bénéficiaires', onTap: () => Navigator.pushNamed(context, AppRoutes.beneficiaries)),
                       FuturCard(icon: Icons.calendar_month, title: 'Agenda', onTap: () => Navigator.pushNamed(context, AppRoutes.agenda)),
                       FuturCard(icon: Icons.chat, title: 'Messages', onTap: () => Navigator.pushNamed(context, AppRoutes.messages)),
                       FuturCard(icon: Icons.verified_user, title: 'Coordination', onTap: () => Navigator.pushNamed(context, AppRoutes.coordinator)),
-                      FuturCard(icon: Icons.admin_panel_settings, title: 'Admin', onTap: () => Navigator.pushNamed(context, AppRoutes.admin)),
                     ],
                   ),
                 )

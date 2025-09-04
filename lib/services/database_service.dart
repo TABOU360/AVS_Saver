@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as app_user;
 import '../models/avs.dart';
 import '../models/beneficiary.dart';
 import '../models/mission.dart';
@@ -16,6 +17,7 @@ class DatabaseService {
 
   // ==================== UTILISATEURS ====================
 
+  /// Créer un profil utilisateur dans Firestore
   Future<void> createUserProfile({
     required String uid,
     required String email,
@@ -44,6 +46,7 @@ class DatabaseService {
     }
   }
 
+  /// Récupérer le profil d'un utilisateur
   Future<app_user.AppUser?> getUserProfile(String uid) async {
     try {
       final doc = await _firestore
@@ -54,10 +57,10 @@ class DatabaseService {
       if (doc.exists) {
         final data = doc.data()!;
         return app_user.AppUser(
-          id: data['id'] ?? uid,
-          email: data['email'] ?? '',
-          name: data['name'] ?? '',
-          role: data['role'] ?? '',
+          id: data['id'],
+          email: data['email'],
+          name: data['name'],
+          role: data['role'],
         );
       }
       return null;
@@ -66,6 +69,7 @@ class DatabaseService {
     }
   }
 
+  /// Mettre à jour le profil utilisateur
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     try {
       data['updatedAt'] = FieldValue.serverTimestamp();
@@ -80,6 +84,7 @@ class DatabaseService {
 
   // ==================== AVS ====================
 
+  /// Récupérer tous les AVS
   Future<List<Avs>> getAllAvs() async {
     try {
       final query = await _firestore
@@ -104,6 +109,7 @@ class DatabaseService {
     }
   }
 
+  /// Rechercher des AVS par compétences
   Future<List<Avs>> searchAvsBySkills(List<String> skills) async {
     try {
       Query query = _firestore
@@ -132,6 +138,7 @@ class DatabaseService {
     }
   }
 
+  /// Créer un profil AVS
   Future<void> createAvsProfile({
     required String uid,
     required String name,
@@ -163,6 +170,7 @@ class DatabaseService {
 
   // ==================== BÉNÉFICIAIRES ====================
 
+  /// Récupérer les bénéficiaires d'un utilisateur
   Future<List<Beneficiary>> getUserBeneficiaries(String userId) async {
     try {
       final query = await _firestore
@@ -185,6 +193,7 @@ class DatabaseService {
     }
   }
 
+  /// Ajouter un bénéficiaire
   Future<String> addBeneficiary({
     required String familyId,
     required String fullName,
@@ -213,37 +222,73 @@ class DatabaseService {
     }
   }
 
-  // ==================== MISSIONS ====================
+  Future<app_user.AppUser?> getCurrentUser() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return null;
+    return await getUserProfile(currentUser.uid);
+  }
 
-  Future<String> createMission({
+
+  Future<void> addNotification({
+    required String userId,
+    required String title,
+    required String body,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final notifData = {
+        'userId': userId,
+        'title': title,
+        'body': body,
+        'data': data,
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection(AppConstants.notificationsCollection)
+          .add(notifData);
+    } catch (e) {
+      throw Exception('Erreur sauvegarde notification: $e');
+    }
+  }
+
+  // ==================== MISSIONS / RÉSERVATIONS ====================
+
+  /// Créer une demande de réservation
+  Future<String> createBookingRequest({
     required String familyId,
     required String avsId,
     required String beneficiaryId,
-    required DateTime start,
-    required DateTime end,
-    MissionStatus status = MissionStatus.pending,
+    required DateTime startTime,
+    required DateTime endTime,
+    required String address,
+    String? notes,
   }) async {
     try {
-      final missionData = {
+      final bookingData = {
         'familyId': familyId,
         'avsId': avsId,
         'beneficiaryId': beneficiaryId,
-        'start': Timestamp.fromDate(start),
-        'end': Timestamp.fromDate(end),
-        'status': _missionStatusToString(status),
+        'startTime': Timestamp.fromDate(startTime),
+        'endTime': Timestamp.fromDate(endTime),
+        'address': address,
+        'notes': notes,
+        'status': AppConstants.missionPending,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
       final docRef = await _firestore
-          .collection(AppConstants.missionsCollection)
-          .add(missionData);
+          .collection(AppConstants.bookingsCollection)
+          .add(bookingData);
 
       return docRef.id;
     } catch (e) {
-      throw Exception('Erreur lors de la création de la mission: $e');
+      throw Exception('Erreur lors de la création de la réservation: $e');
     }
   }
 
+  /// Récupérer les missions d'un utilisateur
   Future<List<Mission>> getUserMissions(String userId, String userRole) async {
     try {
       Query query = _firestore.collection(AppConstants.missionsCollection);
@@ -256,6 +301,7 @@ class DatabaseService {
           query = query.where('familyId', isEqualTo: userId);
           break;
         default:
+        // Coordinateur et admin voient toutes les missions
           break;
       }
 
@@ -267,12 +313,11 @@ class DatabaseService {
         final data = doc.data() as Map<String, dynamic>;
         return Mission(
           id: doc.id,
-          familyId: data['familyId'] ?? '',
           avsId: data['avsId'] ?? '',
           beneficiaryId: data['beneficiaryId'] ?? '',
           start: (data['start'] as Timestamp).toDate(),
           end: (data['end'] as Timestamp).toDate(),
-          status: _stringToMissionStatus(data['status']),
+          status: _stringToMissionStatus(data['status']), familyId: '',
         );
       }).toList();
     } catch (e) {
@@ -280,6 +325,7 @@ class DatabaseService {
     }
   }
 
+  /// Mettre à jour le statut d'une mission
   Future<void> updateMissionStatus(String missionId, MissionStatus status) async {
     try {
       await _firestore
@@ -292,6 +338,66 @@ class DatabaseService {
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour: $e');
     }
+  }
+
+  Future<Avs?> getAvsById(String avsId) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.avsCollection)
+          .doc(avsId)
+          .get();
+      if (!doc.exists) return null;
+      final data = doc.data() as Map<String, dynamic>;
+      return Avs(
+        id: doc.id,
+        name: data['name'] ?? '',
+        rating: (data['rating'] ?? 0.0).toDouble(),
+        skills: List<String>.from(data['skills'] ?? []),
+        hourlyRate: (data['hourlyRate'] ?? 0.0).toDouble(),
+        verified: data['verified'] ?? false,
+        bio: data['bio'] ?? '',
+      );
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de l’AVS: $e');
+    }
+  }
+
+
+  // ==================== MESSAGES ====================
+
+  /// Envoyer un message
+  Future<void> sendMessage({
+    required String senderId,
+    required String receiverId,
+    required String text,
+    String? type,
+  }) async {
+    try {
+      final messageData = {
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'text': text,
+        'type': type ?? 'text',
+        'read': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection(AppConstants.messagesCollection)
+          .add(messageData);
+    } catch (e) {
+      throw Exception('Erreur lors de l\'envoi du message: $e');
+    }
+  }
+
+  /// Stream des messages entre deux utilisateurs
+  Stream<QuerySnapshot> getMessagesStream(String userId1, String userId2) {
+    return _firestore
+        .collection(AppConstants.messagesCollection)
+        .where('senderId', whereIn: [userId1, userId2])
+        .where('receiverId', whereIn: [userId1, userId2])
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   // ==================== HELPERS ====================
@@ -322,6 +428,7 @@ class DatabaseService {
     }
   }
 
+  /// Vérifier si l'utilisateur actuel a les permissions pour une action
   Future<bool> hasPermission(String action, {String? targetUserId}) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return false;
@@ -331,7 +438,7 @@ class DatabaseService {
 
     switch (userProfile.role) {
       case AppConstants.roleAdmin:
-        return true;
+        return true; // Admin peut tout faire
       case AppConstants.roleCoordinateur:
         return ['manage_bookings', 'view_all_users', 'send_notifications']
             .contains(action);

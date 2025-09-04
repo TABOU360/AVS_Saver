@@ -11,4 +11,5 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String coordinator = '/coordinator';
   static const String admin = '/admin';
+  static const String register = '/register';
 }

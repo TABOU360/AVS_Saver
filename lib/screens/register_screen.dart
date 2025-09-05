@@ -68,25 +68,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
       );
 
-      // 2. Créer le profil utilisateur
+      final uid = credential.user!.uid;
       final fullName = '${_firstNameController.text} ${_lastNameController.text}';
+
+      // 2. Préparer les données du profil
+      final userProfile = {
+        'uid': uid,
+        'email': _emailController.text.trim(),
+        'firstName': _firstNameController.text,
+        'lastName': _lastNameController.text,
+        'name': fullName,
+        'role': _selectedRole,
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+        'createdAt': DateTime.now(),
+      };
+
+      // 3. Sauvegarder dans Firestore
       await _databaseService.createUserProfile(
-        uid: credential.user!.uid,
-        email: _emailController.text.trim(),
+        uid: uid,
+        email: userProfile["email"],
         name: fullName,
         role: _selectedRole,
-        additionalData: {
-          'firstName': _firstNameController.text,
-          'lastName': _lastNameController.text,
-          'phone': _phoneController.text,
-          'address': _addressController.text,
-        },
+        additionalData: userProfile,
       );
 
-      // 3. Si AVS, créer le profil spécialisé
+      // 4. Si AVS, créer le profil AVS spécialisé
       if (_selectedRole == AppConstants.roleAvs) {
         await _databaseService.createAvsProfile(
-          uid: credential.user!.uid,
+          uid: uid,
           name: fullName,
           skills: _selectedSkills,
           hourlyRate: double.tryParse(_hourlyRateController.text) ?? 15.0,
@@ -94,10 +104,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
 
-      // 4. Mettre à jour le nom d'affichage
+      // 5. Mettre à jour le nom d'affichage FirebaseAuth
       await _authService.updateUsername(username: fullName);
 
-      // 5. Navigation vers l'accueil
+      // 6. Navigation + message succès
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -120,6 +130,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   void _nextStep() {
     if (_currentStep == 0 && _validateStep1()) {
@@ -251,7 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 8),
           const Text(
             'Commençons par vos informations de base',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
           const SizedBox(height: 32),
 
@@ -361,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 8),
           const Text(
             'Sélectionnez votre rôle dans la plateforme',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
           const SizedBox(height: 32),
 
@@ -417,7 +428,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _selectedRole == AppConstants.roleAvs
                 ? 'Complétez votre profil professionnel'
                 : 'Vérifiez vos informations',
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
+            style: const TextStyle(fontSize: 16, color: Colors.black),
           ),
           const SizedBox(height: 32),
 

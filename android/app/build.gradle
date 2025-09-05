@@ -8,20 +8,20 @@ plugins {
 
 dependencies {
     // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
 
     // Firebase Analytics
     implementation("com.google.firebase:firebase-analytics")
 
     // Ajoute ici d’autres produits Firebase si besoin
-    // ex: implementation("com.google.firebase:firebase-auth")
-    // ex: implementation("com.google.firebase:firebase-firestore")
+     implementation("com.google.firebase:firebase-auth")
+     implementation("com.google.firebase:firebase-firestore")
 }
 
 android {
     namespace = "com.example.avs_saver"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

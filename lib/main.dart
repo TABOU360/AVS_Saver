@@ -97,6 +97,7 @@ class AVSApp extends StatelessWidget {
         AppRoutes.admin: (_) => const AdminScreen(),
       },
 
+
       // Gestion des routes inconnues
       onUnknownRoute: (settings) {
         return MaterialPageRoute(

@@ -1,5 +1,5 @@
 class AppRoutes {
-  static const String login = '/';
+  static const String login = '/login';
   static const String home = '/home';
   static const String browseAvs = '/browse-avs';
   static const String avsProfile = '/avs-profile';

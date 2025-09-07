@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/app_routes.dart';
 import 'core/app_theme.dart';
 import 'firebase_options.dart';
-import 'services/Background_handler.dart';
+import 'services/background_handler.dart';
 import 'services/notification_service.dart';
 import 'services/navigation_service.dart';
 import 'widgets/auth_wrapper.dart';
@@ -25,19 +26,20 @@ import 'package:timezone/data/latest.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
 
   try {
-    // 1. Initialiser Firebase
+    // Initialiser Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // 2. Configurer les notifications en arrière-plan
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // Notifications (uniquement mobile, pas web)
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    }
 
-    // 3. Initialiser les services
+    // Initialiser les services
     await _initializeServices();
 
     runApp(const AVSApp());
@@ -47,20 +49,15 @@ void main() async {
   }
 }
 
-/// Initialiser tous les services de l'application
 Future<void> _initializeServices() async {
   try {
-    // Service de notifications
     await NotificationService().initialize();
     print('✓ NotificationService initialisé');
-
-    // Autres services peuvent être initialisés ici
-    print('✓ Tous les services initialisés');
   } catch (e) {
     print('⚠️ Erreur initialisation services: $e');
-    // L'app continue même si certains services échouent
   }
 }
+
 
 class AVSApp extends StatelessWidget {
   const AVSApp({super.key});
@@ -73,14 +70,10 @@ class AVSApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-
-      // Navigation service pour la navigation globale
       navigatorKey: NavigationService().navigatorKey,
-
-      // Utiliser AuthWrapper au lieu de navigation directe
       home: const AuthWrapper(),
 
-      // Routes définies mais l'AuthWrapper gère la navigation principale
+    // Routes définies mais l'AuthWrapper gère la navigation principale
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.register: (_) => const RegisterScreen(),
@@ -109,7 +102,7 @@ class AVSApp extends StatelessWidget {
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            textScaleFactor: MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2),
+            textScaler: TextScaler.linear(MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2)),
           ),
           child: child ?? const SizedBox(),
         );

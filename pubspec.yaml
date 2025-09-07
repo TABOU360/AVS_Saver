@@ -20,7 +20,7 @@ dependencies:
   flutter_local_notifications: ^17.0.0
   permission_handler: ^11.0.0
   timezone: ^0.9.0
-
+  dwds: 25.1.0
 
 
 dev_dependencies:
@@ -33,3 +33,16 @@ flutter:
   assets:
     - assets/animations/
     - assets/images/
+    - assets/fonts/
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-BoldItalic.ttf
+          weight: 700
+          style: italic

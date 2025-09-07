@@ -31,13 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserData();
   }
 
-  /// Charger les données utilisateur
   Future<void> _loadUserData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Récupérer le profil utilisateur
       final userProfile = await _databaseService.getUserProfile(user.uid);
       if (userProfile != null) {
         setState(() {
@@ -45,18 +43,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _userName = userProfile.name;
         });
 
-        // Charger les statistiques
         await _loadUserStats();
-
-        // S'abonner aux notifications selon le rôle
-        // await NotificationService().subscribeToRoleBasedTopics(_userRole!);
       }
     } catch (e) {
-      print('Erreur chargement données utilisateur: $e');
+      debugPrint('Erreur chargement données utilisateur: $e');
     }
   }
 
-  /// Charger les statistiques utilisateur
   Future<void> _loadUserStats() async {
     try {
       final stats = await _dataService.getUserStats();
@@ -65,19 +58,17 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingStats = false;
       });
     } catch (e) {
-      print('Erreur chargement statistiques: $e');
+      debugPrint('Erreur chargement stats: $e');
       setState(() => _isLoadingStats = false);
     }
   }
 
-  /// Rafraîchir les données
   Future<void> _refreshData() async {
     setState(() => _isLoadingStats = true);
     await _dataService.refreshAllData();
     await _loadUserStats();
   }
 
-  /// Navigation sécurisée
   Future<void> _navigateToRoute(String routeName) async {
     if (await _navigationService.canNavigateTo(routeName)) {
       _navigationService.navigateTo(routeName);
@@ -94,121 +85,17 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshData,
         child: CustomScrollView(
           slivers: [
-            // AppBar personnalisée
-            SliverAppBar(
-              expandedHeight: 200,
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.green.shade600,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.green.shade600,
-                        Colors.green.shade400,
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            AppConstants.appName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _userName != null
-                                ? 'Bonjour $_userName !'
-                                : 'Bienvenue sur la plateforme',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                            ),
-                          ),
-                          if (_userRole != null)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _getRoleDisplayName(_userRole!),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    // TODO: Afficher les notifications
-                  },
-                ),
-                PopupMenuButton(
-                  icon: const Icon(Icons.more_vert),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      child: const ListTile(
-                        leading: Icon(Icons.person),
-                        title: Text('Profil'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onTap: () => _navigateToRoute(AppRoutes.profile),
-                    ),
-                    PopupMenuItem(
-                      child: const ListTile(
-                        leading: Icon(Icons.refresh),
-                        title: Text('Actualiser'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onTap: () => _refreshData(),
-                    ),
-                    PopupMenuItem(
-                      child: const ListTile(
-                        leading: Icon(Icons.logout, color: Colors.red),
-                        title: Text('Déconnexion', style: TextStyle(color: Colors.red)),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onTap: () => _showLogoutDialog(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            _buildAppBar(),
 
-            // Statistiques rapides
-            if (_userStats != null && !_isLoadingStats)
-              SliverToBoxAdapter(
+            // Stats
+            SliverToBoxAdapter(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
                 child: _buildStatsSection(),
               ),
+            ),
 
-            // Grille de navigation principale
+            // Navigation cards
             SliverPadding(
               padding: const EdgeInsets.all(20),
               sliver: SliverToBoxAdapter(
@@ -216,33 +103,136 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Actions rapides selon le rôle
+            // Actions rapides
             SliverToBoxAdapter(
               child: _buildQuickActions(),
             ),
 
-            // Espace pour le bottom navigation
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
-
-      // Bottom Navigation adaptée au rôle
       bottomNavigationBar: _buildBottomNavigation(),
-
-      // FAB contextuel
       floatingActionButton: _buildContextualFAB(),
     );
   }
 
-  /// Section des statistiques
+  SliverAppBar _buildAppBar() {
+    return SliverAppBar(
+      expandedHeight: 200,
+      pinned: true,
+      backgroundColor: Colors.green.shade600,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade600, Colors.green.shade400],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    AppConstants.appName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _userName != null
+                        ? "Bonjour $_userName 👋"
+                        : "Bienvenue sur la plateforme",
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                  if (_userRole != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getRoleDisplayName(_userRole!),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {},
+        ),
+        PopupMenuButton(
+          icon: const Icon(Icons.more_vert),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              child: const ListTile(
+                leading: Icon(Icons.person),
+                title: Text("Profil"),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onTap: () => _navigateToRoute(AppRoutes.profile),
+            ),
+            PopupMenuItem(
+              child: const ListTile(
+                leading: Icon(Icons.refresh),
+                title: Text("Actualiser"),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onTap: () => _refreshData(),
+            ),
+            PopupMenuItem(
+              child: const ListTile(
+                leading: Icon(Icons.logout, color: Colors.red),
+                title: Text("Déconnexion",
+                    style: TextStyle(color: Colors.red)),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onTap: () => _showLogoutDialog(),
+            ),
+          ],
+        )
+      ],
+    );
+  }
+
   Widget _buildStatsSection() {
     if (_isLoadingStats) {
       return const Padding(
         padding: EdgeInsets.all(20),
         child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_userStats == null) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Center(
+          child: Text(
+            "Aucune donnée disponible",
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
       );
     }
 
@@ -263,43 +253,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Aperçu',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const Text("Aperçu",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Missions',
-                  '${_userStats!['totalMissions']}',
-                  Icons.assignment,
-                  Colors.blue,
-                ),
+                    "Missions",
+                    "${_userStats!['totalMissions']}",
+                    Icons.assignment,
+                    Colors.blue),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  'Ce mois',
-                  '${_userStats!['thisMonthMissions']}',
-                  Icons.calendar_month,
-                  Colors.green,
-                ),
+                    "Ce mois",
+                    "${_userStats!['thisMonthMissions']}",
+                    Icons.calendar_month,
+                    Colors.green),
               ),
-              const SizedBox(width: 12),
-              if (_userRole == AppConstants.roleFamille)
-                Expanded(
-                  child: _buildStatCard(
-                    'Bénéficiaires',
-                    '${_userStats!['totalBeneficiaries']}',
-                    Icons.people,
-                    Colors.orange,
-                  ),
-                ),
             ],
           ),
         ],
@@ -307,7 +280,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -316,33 +290,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: color),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
         ],
       ),
     );
   }
 
-  /// Grille de navigation principale
   Widget _buildNavigationGrid() {
     final cards = _getNavigationCards();
-
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -353,95 +314,76 @@ class _HomeScreenState extends State<HomeScreen> {
         childAspectRatio: 1.1,
       ),
       itemCount: cards.length,
-      itemBuilder: (context, index) => cards[index],
+      itemBuilder: (context, i) => cards[i],
     );
   }
 
-  /// Obtenir les cartes de navigation selon le rôle
   List<Widget> _getNavigationCards() {
-    final baseCards = <Widget>[];
+    final cards = <Widget>[];
 
     switch (_userRole) {
       case AppConstants.roleFamille:
-        baseCards.addAll([
+        cards.addAll([
           FuturCard(
-            icon: Icons.search,
-            title: 'Trouver un·e AVS',
-            onTap: () => _navigateToRoute(AppRoutes.browseAvs),
-            color: Colors.blue.shade600,
-          ),
+              icon: Icons.search,
+              title: "Trouver un·e AVS",
+              onTap: () => _navigateToRoute(AppRoutes.browseAvs),
+              color: Colors.blue.shade600),
           FuturCard(
-            icon: Icons.people,
-            title: 'Bénéficiaires',
-            onTap: () => _navigateToRoute(AppRoutes.beneficiaries),
-            color: Colors.orange.shade600,
-          ),
+              icon: Icons.people,
+              title: "Bénéficiaires",
+              onTap: () => _navigateToRoute(AppRoutes.beneficiaries),
+              color: Colors.orange.shade600),
         ]);
         break;
-
       case AppConstants.roleAvs:
-        baseCards.addAll([
+        cards.addAll([
           FuturCard(
-            icon: Icons.work,
-            title: 'Mes missions',
-            onTap: () => _navigateToRoute(AppRoutes.agenda),
-            color: Colors.purple.shade600,
-          ),
+              icon: Icons.work,
+              title: "Mes missions",
+              onTap: () => _navigateToRoute(AppRoutes.agenda),
+              color: Colors.purple.shade600),
           FuturCard(
-            icon: Icons.star,
-            title: 'Mon profil',
-            onTap: () => _navigateToRoute(AppRoutes.profile),
-            color: Colors.amber.shade600,
-          ),
+              icon: Icons.star,
+              title: "Mon profil",
+              onTap: () => _navigateToRoute(AppRoutes.profile),
+              color: Colors.amber.shade600),
         ]);
         break;
-
       case AppConstants.roleCoordinateur:
-        baseCards.add(
-          FuturCard(
+        cards.add(FuturCard(
             icon: Icons.verified_user,
-            title: 'Coordination',
+            title: "Coordination",
             onTap: () => _navigateToRoute(AppRoutes.coordinator),
-            color: Colors.indigo.shade600,
-          ),
-        );
+            color: Colors.indigo.shade600));
         break;
-
       case AppConstants.roleAdmin:
-        baseCards.add(
-          FuturCard(
+        cards.add(FuturCard(
             icon: Icons.admin_panel_settings,
-            title: 'Administration',
+            title: "Administration",
             onTap: () => _navigateToRoute(AppRoutes.admin),
-            color: Colors.red.shade600,
-          ),
-        );
+            color: Colors.red.shade600));
         break;
     }
 
-    // Cards communes
-    baseCards.addAll([
+    cards.addAll([
       FuturCard(
-        icon: Icons.calendar_month,
-        title: 'Agenda',
-        onTap: () => _navigateToRoute(AppRoutes.agenda),
-        color: Colors.green.shade600,
-      ),
+          icon: Icons.calendar_month,
+          title: "Agenda",
+          onTap: () => _navigateToRoute(AppRoutes.agenda),
+          color: Colors.green.shade600),
       FuturCard(
-        icon: Icons.chat,
-        title: 'Messages',
-        onTap: () => _navigateToRoute(AppRoutes.messages),
-        color: Colors.teal.shade600,
-      ),
+          icon: Icons.chat,
+          title: "Messages",
+          onTap: () => _navigateToRoute(AppRoutes.messages),
+          color: Colors.teal.shade600),
     ]);
 
-    return baseCards;
+    return cards;
   }
 
-  /// Actions rapides contextuelles
   Widget _buildQuickActions() {
     if (_userRole != AppConstants.roleFamille) return const SizedBox();
-
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
@@ -450,22 +392,16 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+              color: Colors.grey.shade200,
+              blurRadius: 10,
+              offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Actions rapides',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const Text("Actions rapides",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -473,12 +409,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _navigateToRoute(AppRoutes.browseAvs),
                   icon: const Icon(Icons.add),
-                  label: const Text('Nouvelle réservation'),
+                  label: const Text("Nouvelle réservation"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white),
                 ),
               ),
               const SizedBox(width: 12),
@@ -486,49 +420,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => _navigateToRoute(AppRoutes.beneficiaries),
                   icon: const Icon(Icons.person_add),
-                  label: const Text('Ajouter bénéficiaire'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+                  label: const Text("Ajouter bénéficiaire"),
                 ),
               ),
             ],
-          ),
+          )
         ],
       ),
     );
   }
 
-  /// Bottom Navigation adaptée au rôle
   Widget _buildBottomNavigation() {
-    final items = <BottomNavigationBarItem>[
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.home),
-        label: 'Accueil',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.calendar_month),
-        label: 'Agenda',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.chat),
-        label: 'Messages',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.person),
-        label: 'Profil',
-      ),
+    const items = [
+      BottomNavigationBarItem(icon: Icon(Icons.home), label: "Accueil"),
+      BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_month), label: "Agenda"),
+      BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Messages"),
+      BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profil"),
     ];
 
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
+      items: items,
       currentIndex: _selectedBottomNavIndex,
-      onTap: (index) {
-        setState(() => _selectedBottomNavIndex = index);
-        switch (index) {
-          case 0:
-          // Déjà sur l'accueil
-            break;
+      onTap: (i) {
+        setState(() => _selectedBottomNavIndex = i);
+        switch (i) {
           case 1:
             _navigateToRoute(AppRoutes.agenda);
             break;
@@ -541,11 +458,10 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       selectedItemColor: Colors.green,
-      unselectedItemColor: Colors.grey, items: [],
+      unselectedItemColor: Colors.grey,
     );
   }
 
-  /// FAB contextuel selon le rôle
   Widget? _buildContextualFAB() {
     switch (_userRole) {
       case AppConstants.roleFamille:
@@ -565,27 +481,24 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Dialogue de déconnexion
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Déconnexion'),
-        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+      builder: (c) => AlertDialog(
+        title: const Text("Déconnexion"),
+        content: const Text("Êtes-vous sûr de vouloir vous déconnecter ?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Annuler")),
           ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await FirebaseAuth.instance.signOut();
-              _navigationService.navigateToLogin();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Déconnexion'),
-          ),
+              onPressed: () async {
+                Navigator.pop(context);
+                await FirebaseAuth.instance.signOut();
+                _navigationService.navigateToLogin();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text("Déconnexion"))
         ],
       ),
     );
@@ -594,13 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getRoleDisplayName(String role) {
     switch (role) {
       case AppConstants.roleFamille:
-        return 'Famille';
+        return "Famille";
       case AppConstants.roleAvs:
-        return 'AVS';
+        return "AVS";
       case AppConstants.roleCoordinateur:
-        return 'Coordinateur';
+        return "Coordinateur";
       case AppConstants.roleAdmin:
-        return 'Administrateur';
+        return "Administrateur";
       default:
         return role;
     }

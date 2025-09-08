@@ -4,7 +4,6 @@ import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../services/database_service.dart';
-import '../utils/constants.dart';
 
 /// Widget qui gère automatiquement l'état d'authentification
 class AuthWrapper extends StatelessWidget {

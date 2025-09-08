@@ -3,7 +3,6 @@ import '../models/avs.dart';
 import '../models/beneficiary.dart';
 import '../models/mission.dart';
 import '../services/database_service.dart';
-import '../utils/constants.dart';
 
 class DataService {
   static final DataService _instance = DataService._internal();
@@ -68,7 +67,7 @@ class DataService {
               (avs) => avs.id == avsId,
           orElse: () => throw StateError('AVS non trouvé'),
         );
-        if (cachedAvs != null) return cachedAvs;
+        return cachedAvs;
       }
 
       // Récupérer depuis Firebase si pas dans le cache

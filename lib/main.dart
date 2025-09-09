@@ -8,7 +8,6 @@ import 'firebase_options.dart';
 import 'services/background_handler.dart';
 import 'services/notification_service.dart';
 import 'services/navigation_service.dart';
-import 'widgets/auth_wrapper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -22,6 +21,7 @@ import 'screens/messages_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/coordinator_screen.dart';
 import 'screens/admin_screen.dart';
+import 'screens/splash_screen.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
 void main() async {
@@ -29,17 +29,14 @@ void main() async {
   tz.initializeTimeZones();
 
   try {
-    // Initialiser Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Notifications (uniquement mobile, pas web)
     if (!kIsWeb) {
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     }
 
-    // Initialiser les services
     await _initializeServices();
 
     runApp(const AVSApp());
@@ -58,7 +55,6 @@ Future<void> _initializeServices() async {
   }
 }
 
-
 class AVSApp extends StatelessWidget {
   const AVSApp({super.key});
 
@@ -71,9 +67,7 @@ class AVSApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       navigatorKey: NavigationService().navigatorKey,
-      home: const AuthWrapper(),
-
-    // Routes définies mais l'AuthWrapper gère la navigation principale
+      home: const SplashScreen(),
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.register: (_) => const RegisterScreen(),
@@ -89,21 +83,13 @@ class AVSApp extends StatelessWidget {
         AppRoutes.coordinator: (_) => const CoordinatorScreen(),
         AppRoutes.admin: (_) => const AdminScreen(),
       },
-
-
-      // Gestion des routes inconnues
-      onUnknownRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (_) => const NotFoundScreen(),
-        );
-      },
-
-      // Builder pour gérer les erreurs globales
+      onUnknownRoute: (settings) =>
+          MaterialPageRoute(builder: (_) => const NotFoundScreen()),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2)),
-          ),
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(
+              // ignore: deprecated_member_use
+              MediaQuery.of(context).textScaleFactor.clamp(0.85, 1.15))),
           child: child ?? const SizedBox(),
         );
       },
@@ -141,7 +127,7 @@ class ErrorApp extends StatelessWidget {
               ),
               SizedBox(height: 16),
               Text(
-                'Impossible de démarrer l\'application.\nVeuillez redémarrer.',
+                "Impossible de démarrer l'application.\nVeuillez redémarrer.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,

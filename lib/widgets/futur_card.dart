@@ -24,20 +24,16 @@ class FuturCard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(100),
-      splashColor: Colors.white.withOpacity(0.3),  // Subtle ripple effect
+      splashColor: Colors.white.withOpacity(0.3), // Subtle ripple effect
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          color: color,
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
-          boxShadow: [
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
             BoxShadow(
-              color: color,  // Match shadow to gradient
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(5, 5),
-            ),
+                color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
           ],
         ),
         child: Column(
@@ -64,7 +60,7 @@ class FuturCard extends StatelessWidget {
                 ],
               ),
               textAlign: TextAlign.center,
-              maxLines: 2,  // Prevent overflow for longer titles
+              maxLines: 2, // Prevent overflow for longer titles
               overflow: TextOverflow.ellipsis,
             ),
           ],

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_auth/firebase_auth.dart' as app_user;
 import '../models/avs.dart';
 import '../models/beneficiary.dart';
 import '../models/mission.dart';
@@ -57,10 +56,10 @@ class DatabaseService {
       if (doc.exists) {
         final data = doc.data()!;
         return app_user.AppUser(
-          id: data['id'],
-          email: data['email'],
-          name: data['name'],
-          role: data['role'],
+          id: data['id'] ?? '',
+          email: data['email'] ?? '',
+          name: data['name'] ?? '',
+          role: data['role'] ?? 'AVS',
         );
       }
       return null;
@@ -207,7 +206,7 @@ class DatabaseService {
         'fullName': fullName,
         'age': age,
         'condition': condition,
-        'additionalInfo': additionalInfo,
+        'additionalInfo': additionalInfo ?? '',
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
       };
@@ -227,7 +226,6 @@ class DatabaseService {
     if (currentUser == null) return null;
     return await getUserProfile(currentUser.uid);
   }
-
 
   Future<void> addNotification({
     required String userId,
@@ -273,7 +271,7 @@ class DatabaseService {
         'startTime': Timestamp.fromDate(startTime),
         'endTime': Timestamp.fromDate(endTime),
         'address': address,
-        'notes': notes,
+        'notes': notes ?? '',
         'status': AppConstants.missionPending,
         'createdAt': FieldValue.serverTimestamp(),
       };
@@ -301,13 +299,10 @@ class DatabaseService {
           query = query.where('familyId', isEqualTo: userId);
           break;
         default:
-        // Coordinateur et admin voient toutes les missions
           break;
       }
 
-      final result = await query
-          .orderBy('start', descending: true)
-          .get();
+      final result = await query.orderBy('start', descending: true).get();
 
       return result.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -315,9 +310,10 @@ class DatabaseService {
           id: doc.id,
           avsId: data['avsId'] ?? '',
           beneficiaryId: data['beneficiaryId'] ?? '',
-          start: (data['start'] as Timestamp).toDate(),
-          end: (data['end'] as Timestamp).toDate(),
-          status: _stringToMissionStatus(data['status']), familyId: '',
+          start: (data['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          end: (data['end'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          status: _stringToMissionStatus(data['status']),
+          familyId: '',
         );
       }).toList();
     } catch (e) {
@@ -326,7 +322,8 @@ class DatabaseService {
   }
 
   /// Mettre à jour le statut d'une mission
-  Future<void> updateMissionStatus(String missionId, MissionStatus status) async {
+  Future<void> updateMissionStatus(
+      String missionId, MissionStatus status) async {
     try {
       await _firestore
           .collection(AppConstants.missionsCollection)
@@ -361,7 +358,6 @@ class DatabaseService {
       throw Exception('Erreur lors de la récupération de l’AVS: $e');
     }
   }
-
 
   // ==================== MESSAGES ====================
 
@@ -438,7 +434,7 @@ class DatabaseService {
 
     switch (userProfile.role) {
       case AppConstants.roleAdmin:
-        return true; // Admin peut tout faire
+        return true;
       case AppConstants.roleCoordinateur:
         return ['manage_bookings', 'view_all_users', 'send_notifications']
             .contains(action);

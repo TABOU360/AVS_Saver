@@ -1,3 +1,22 @@
+import 'package:flutter/material.dart';
+
+class AppColors {
+  static const Color medicalBlue = Color(0xFF0F7FAF);
+  static const Color aqua = Color(0xFF44D9D9);
+  static const Color accent = Color(0xFF6EE7B7);
+  static const Color background = Color(0xFFF7FBFD);
+  static const Color card = Color(0xFFFFFFFF);
+  static const Color inputFill = Color(0xFFF0F7FA);
+  static const Color surfaceBorder = Color(0xFFE2F0F6);
+  static const Color darkText = Color(0xFF062A3A);
+  static const Color secondaryText = Color(0xFF1E4955);
+  static const Color danger = Color(0xFFEF476F);
+
+  // Helpers
+  static const BorderRadiusGeometry corner =
+      BorderRadius.all(Radius.circular(16));
+}
+
 class AppConstants {
   // Configuration app
   static const String appName = 'AVS_Saver';
@@ -48,7 +67,8 @@ class AppConstants {
 
   // Assets
   static const String logoPath = 'assets/images/logo.jpg';
-  static const String placeholderAvatar = 'assets/images/placeholder_avatar.png';
+  static const String placeholderAvatar =
+      'assets/images/placeholder_avatar.png';
 
   // Erreurs communes
   static const String errorNetwork = 'Erreur de connexion réseau';

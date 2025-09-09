@@ -55,7 +55,8 @@ class ProfileScreen extends StatelessWidget {
                 onPressed: () {
                   // TODO: Ajouter navigation vers un écran de modification
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Écran de modification non implémenté')),
+                    const SnackBar(
+                        content: Text('Écran de modification non implémenté')),
                   );
                 },
               ),

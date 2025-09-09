@@ -1,201 +1,143 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../core/app_routes.dart';
+import 'package:flutter/services.dart';
+import '../widgets/auth_wrapper.dart';
 import '../utils/constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  final bool _showButton = true;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _checkAuthAndNavigate();
-  }
+    // Petite animation pulsée et infinie
+    _ctrl = AnimationController(
+        vsync: this, duration: Duration(milliseconds: 1400));
+    _scale = Tween<double>(begin: 0.95, end: 1.08)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed)
+        _ctrl.reverse();
+      else if (status == AnimationStatus.dismissed) _ctrl.forward();
+    });
+    _ctrl.forward();
 
-  void _initializeAnimations() {
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
-
-    _animationController.forward();
-  }
-
-  Future<void> _checkAuthAndNavigate() async {
-    // Attendre minimum 2 secondes pour l'animation
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-
-    // Vérifier l'état d'authentification
-    User? currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser != null) {
-      // Utilisateur connecté, vérifier si le profil est complet
-      await _checkUserProfileAndNavigate(currentUser);
-    } else {
-      // Pas d'utilisateur connecté, aller à l'écran de connexion
-      _navigateToLogin();
-    }
-  }
-
-  Future<void> _checkUserProfileAndNavigate(User user) async {
-    try {
-      // TODO: Vérifier si le profil utilisateur est complet en base
-      // Pour l'instant, on navigue directement vers l'accueil
-      _navigateToHome();
-    } catch (e) {
-      // En cas d'erreur, déconnecter et aller au login
-      await FirebaseAuth.instance.signOut();
-      _navigateToLogin();
-    }
-  }
-
-  void _navigateToLogin() {
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-    }
-  }
-
-  void _navigateToHome() {
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
-    }
+    // Forcer status bar en foncé pour look médical propre
+    SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent));
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _ctrl.dispose();
     super.dispose();
+  }
+
+  void _proceed() {
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AuthWrapper()));
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.green.shade50,
-              Colors.white,
-              Colors.green.shade50,
-            ],
-          ),
-        ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Column(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Dégradé léger en fond
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.background, AppColors.inputFill],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedBuilder(
+                    animation: _scale,
+                    builder: (_, child) =>
+                        Transform.scale(scale: _scale.value, child: child),
+                    child: Container(
+                      width: 170,
+                      height: 170,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                            colors: [AppColors.medicalBlue, AppColors.aqua]),
+                        borderRadius: BorderRadius.circular(40),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 20,
+                              offset: Offset(0, 8))
+                        ],
+                      ),
+                      child: const Center(
+                          child: Icon(Icons.health_and_safety_rounded,
+                              size: 78, color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('AVS Saver',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.darkText)),
+                  const SizedBox(height: 8),
+                  Text(
+                      'Choisissez la personne idéale pour ceux que vous aimez ',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.secondaryText)),
+                ],
+              ),
+            ),
+            // Bouton "Suivant" pour que l'utilisateur ferme le splash quand il veut
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 28,
+              child: AnimatedOpacity(
+                duration: Duration(milliseconds: 300),
+                opacity: _showButton ? 1 : 0,
+                child: ElevatedButton(
+                  onPressed: _proceed,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: AppColors.medicalBlue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo animé
-                      Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.shade200,
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.health_and_safety,
-                          size: 60,
-                          color: Colors.green.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Titre de l'app
-                      Text(
-                        AppConstants.appName,
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Sous-titre
-                      Text(
-                        'Plateforme AVS • Familles • Coordination',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.green.shade500,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 48),
-
-                      // Indicateur de chargement
-                      SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.green.shade400,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      Text(
-                        'Chargement...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.green.shade600,
-                        ),
-                      ),
+                      Text('Suivant',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_ios, size: 16),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );

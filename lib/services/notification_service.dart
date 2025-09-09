@@ -13,7 +13,7 @@ class NotificationService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   final DatabaseService _databaseService = DatabaseService();
 
   bool _isInitialized = false;
@@ -39,7 +39,6 @@ class NotificationService {
 
   /// Demander les permissions de notifications
   Future<void> _requestPermissions() async {
-
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       announcement: false,
@@ -59,10 +58,10 @@ class NotificationService {
 
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const DarwinInitializationSettings iosSettings =
-    DarwinInitializationSettings(
+        DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
@@ -92,7 +91,8 @@ class NotificationService {
 
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
-    RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
+    RemoteMessage? initialMessage =
+        await _firebaseMessaging.getInitialMessage();
     if (initialMessage != null) {
       _handleMessageOpenedApp(initialMessage);
     }
@@ -106,7 +106,8 @@ class NotificationService {
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'general_notifications',
       'Notifications générales',
       channelDescription: 'Notifications de l\'application AVS_Saver',
@@ -255,7 +256,8 @@ class NotificationService {
     await sendNotificationToUser(
       userId: familyId,
       title: 'Réservation confirmée',
-      body: 'Votre réservation avec $avsName est confirmée pour le ${_formatDateTime(scheduledTime)}',
+      body:
+          'Votre réservation avec $avsName est confirmée pour le ${_formatDateTime(scheduledTime)}',
       data: {
         'type': AppConstants.notifBookingConfirmed,
         'action': 'open_agenda',
@@ -306,7 +308,8 @@ class NotificationService {
     required DateTime scheduledTime,
     Map<String, String>? data,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'scheduled_notifications',
       'Rappels programmés',
       channelDescription: 'Rappels de missions et rendez-vous',
@@ -332,7 +335,7 @@ class NotificationService {
       _convertToTZDateTime(scheduledTime),
       details,
       uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.absoluteTime,
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: data?.toString(),
     );
   }

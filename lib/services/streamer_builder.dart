@@ -6,7 +6,8 @@ class ChatScreen extends StatelessWidget {
   final String currentUserId;
   final String otherUserId;
 
-  ChatScreen({required this.currentUserId, required this.otherUserId});
+  ChatScreen(
+      {super.key, required this.currentUserId, required this.otherUserId});
 
   final TextEditingController _controller = TextEditingController();
   final ChatService _chatService = ChatService();
@@ -21,7 +22,8 @@ class ChatScreen extends StatelessWidget {
             child: StreamBuilder<QuerySnapshot>(
               stream: _chatService.getMessages(currentUserId),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
                   reverse: true,
@@ -36,7 +38,7 @@ class ChatScreen extends StatelessWidget {
           ),
           TextField(
             controller: _controller,
-            decoration: InputDecoration(hintText: 'Entrez un message'),
+            decoration: const InputDecoration(hintText: 'Entrez un message'),
             onSubmitted: (text) {
               _chatService.sendMessage(otherUserId, text, currentUserId);
               _controller.clear();

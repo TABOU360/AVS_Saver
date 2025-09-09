@@ -142,7 +142,7 @@ class _ProfileIncompleteScreen extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 'Votre profil n\'est pas encore configuré. '
-                    'Veuillez compléter vos informations pour continuer.',
+                'Veuillez compléter vos informations pour continuer.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,

@@ -14,6 +14,26 @@ class NavigationService {
 
   BuildContext? get currentContext => navigatorKey.currentContext;
 
+  // Normalise un rôle/métier venant de la base en l'un des rôles attendus par l'app.
+  String _normalizeRole(String role) {
+    final r = role.trim().toLowerCase();
+
+    if (r == AppConstants.roleAdmin.toLowerCase())
+      return AppConstants.roleAdmin;
+    if (r == AppConstants.roleCoordinateur.toLowerCase())
+      return AppConstants.roleCoordinateur;
+    if (r == AppConstants.roleAvs.toLowerCase() ||
+        r.contains('avs') ||
+        r.contains('aux')) {
+      return AppConstants.roleAvs;
+    }
+    if (r == AppConstants.roleFamille.toLowerCase() || r.contains('fam'))
+      return AppConstants.roleFamille;
+
+    // Rôle inconnu -> fallback : permettre l'accès à l'accueil (comportement plus permissif)
+    return AppConstants.roleFamille;
+  }
+
   /// Navigation basée sur le rôle utilisateur
   Future<void> navigateBasedOnRole() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -29,18 +49,25 @@ class NavigationService {
         return;
       }
 
-      // Navigation selon le rôle
-      switch (userProfile.role) {
+      final role = _normalizeRole(userProfile.role);
+      // Navigation selon le rôle — on remplace toute la pile pour éviter conflits/doublons
+      switch (role) {
         case AppConstants.roleAdmin:
-          navigateTo(AppRoutes.admin);
+          navigatorKey.currentState
+              ?.pushNamedAndRemoveUntil(AppRoutes.admin, (route) => false);
           break;
         case AppConstants.roleCoordinateur:
-          navigateTo(AppRoutes.coordinator);
+          navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.coordinator, (route) => false);
           break;
         case AppConstants.roleAvs:
+          navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.avsDashboard, (route) => false);
+          break;
         case AppConstants.roleFamille:
         default:
-          navigateTo(AppRoutes.home);
+          navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.familyDashboard, (route) => false);
           break;
       }
     } catch (e) {
@@ -53,7 +80,7 @@ class NavigationService {
   void navigateToLogin() {
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
       AppRoutes.login,
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -61,7 +88,7 @@ class NavigationService {
   void navigateToHome() {
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
       AppRoutes.home,
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -93,8 +120,9 @@ class NavigationService {
     final userProfile = await _databaseService.getUserProfile(user.uid);
     if (userProfile == null) return false;
 
+    final role = _normalizeRole(userProfile.role);
     // Définir les permissions par rôle
-    switch (userProfile.role) {
+    switch (role) {
       case AppConstants.roleAdmin:
         return true; // Admin peut tout voir
 

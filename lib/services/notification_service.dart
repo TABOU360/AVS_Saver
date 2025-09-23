@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:timezone/browser.dart';
+import 'package:timezone/timezone.dart';
+import 'package:timezone/data/latest.dart';
 import '../services/database_service.dart';
 import '../utils/constants.dart';
 

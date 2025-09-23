@@ -11,6 +11,8 @@ import 'services/navigation_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/avs_dashboard_screen.dart';
+import 'screens/family_dashboard_screen.dart';
 import 'screens/browse_avs_screen.dart';
 import 'screens/avs_profile_screen.dart';
 import 'screens/booking_screen.dart';
@@ -41,7 +43,9 @@ void main() async {
 
     runApp(const AVSApp());
   } catch (e) {
-    print('Erreur initialisation app: $e');
+    if (kDebugMode) {
+      print('Erreur initialisation app: $e');
+    }
     runApp(const ErrorApp());
   }
 }
@@ -49,9 +53,13 @@ void main() async {
 Future<void> _initializeServices() async {
   try {
     await NotificationService().initialize();
-    print('✓ NotificationService initialisé');
+    if (kDebugMode) {
+      print('✓ NotificationService initialisé');
+    }
   } catch (e) {
-    print('⚠️ Erreur initialisation services: $e');
+    if (kDebugMode) {
+      print('⚠️ Erreur initialisation services: $e');
+    }
   }
 }
 
@@ -72,6 +80,8 @@ class AVSApp extends StatelessWidget {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.register: (_) => const RegisterScreen(),
         AppRoutes.home: (_) => const HomeScreen(),
+        AppRoutes.avsDashboard: (_) => const AvsDashboardScreen(),
+        AppRoutes.familyDashboard: (_) => const FamilyDashboardScreen(),
         AppRoutes.browseAvs: (_) => BrowseAvsScreen(),
         AppRoutes.avsProfile: (_) => const AvsProfileScreen(),
         AppRoutes.booking: (_) => const BookingScreen(),
@@ -87,9 +97,10 @@ class AVSApp extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const NotFoundScreen()),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(
-              // ignore: deprecated_member_use
-              MediaQuery.of(context).textScaleFactor.clamp(0.85, 1.15))),
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(
+                MediaQuery.textScaleFactorOf(context).clamp(0.85, 1.15)),
+          ),
           child: child ?? const SizedBox(),
         );
       },

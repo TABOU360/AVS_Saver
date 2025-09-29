@@ -27,16 +27,15 @@ class DatabaseService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
+      final normalizedRole = AppConstants.normalizeRole(role);
       final userData = {
         'id': uid,
         'email': email,
         'name': name,
-        'role': role,
+        'role': normalizedRole,
         'phone': phone,
         'address': address,
         'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'isActive': true,
         ...?additionalData,
       };
 
@@ -80,11 +79,10 @@ class DatabaseService {
   /// Mettre à jour le profil utilisateur
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     try {
-      data['updatedAt'] = FieldValue.serverTimestamp();
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .update(data);
+      if (data.containsKey('role') && data['role'] is String) {
+        data['role'] = AppConstants.normalizeRole(data['role'] as String);
+      }
+      await FirebaseFirestore.instance.collection(AppConstants.usersCollection).doc(uid).update(data);
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour: $e');
     }

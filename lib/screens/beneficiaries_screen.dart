@@ -376,9 +376,11 @@ class _BeneficiariesScreenState extends State<BeneficiariesScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: conditionColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
+                    // ignore: deprecated_member_use
                     color: conditionColor.withOpacity(0.3),
                   ),
                 ),

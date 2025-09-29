@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/constants.dart';
+
 class AppUser {
   final String id;
   final String email;
@@ -20,16 +22,16 @@ class AppUser {
   });
 
   // Méthode fromMap mise à jour
-  factory AppUser.fromMap(Map<String, dynamic> data) {
+  factory AppUser.fromMap(Map<String, dynamic> map) {
     return AppUser(
-      id: data['id'] ?? '',
-      email: data['email'] ?? '',
-      name: data['name'] ?? '',
-      role: data['role'] ?? 'user',
-      phone: data['phone'], // Ajoutez cette ligne
-      address: data['address'], // Ajoutez cette ligne
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      email: map['email'] as String? ?? '',
+      role: AppConstants.normalizeRole(map['role'] as String? ?? ''), // <- normalisation à la lecture
+      phone: map['phone'], // Ajoutez cette ligne
+      address: map['address'], // Ajoutez cette ligne
+      createdAt: map['createdAt'] != null
+          ? (map['createdAt'] as Timestamp).toDate()
           : null, // Ajoutez cette ligne
     );
   }

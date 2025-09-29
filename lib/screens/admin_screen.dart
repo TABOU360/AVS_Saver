@@ -625,7 +625,7 @@ class _AdminScreenState extends State<AdminScreen>
     final pendingVerifications = [
       {
         'name': 'Sophie Bernard',
-        'documents': ['Diplôme AVS', 'Casier judiciaire', 'CV'],
+        'documents': ["Diplôme AVS", 'Casier judiciaire', 'CV'],
         'submittedAt': '2025-01-15',
       },
       {

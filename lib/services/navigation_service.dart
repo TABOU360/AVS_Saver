@@ -16,30 +16,7 @@ class NavigationService {
 
   // Normalise un rôle/métier venant de la base en l'un des rôles attendus par l'app.
   String _normalizeRole(String role) {
-    final r = role.trim().toLowerCase();
-
-    if (r == AppConstants.roleAdmin.toLowerCase()) {
-      return AppConstants.roleAdmin;
-    }
-    if (r == AppConstants.roleCoordinateur.toLowerCase()) {
-      return AppConstants.roleCoordinateur;
-    }
-    if (r == AppConstants.roleAvs.toLowerCase() ||
-        r.contains('avs') ||
-        r.contains('aux') ||
-        r.contains('aide') ||
-        r.contains('soin')) {
-      return AppConstants.roleAvs;
-    }
-    if (r == AppConstants.roleFamille.toLowerCase() ||
-        r.contains('fam') ||
-        r.contains('parent') ||
-        r.contains('proche')) {
-      return AppConstants.roleFamille;
-    }
-
-    // Rôle inconnu -> fallback vers famille (comportement permissif)
-    return AppConstants.roleFamille;
+    return AppConstants.normalizeRole(role);
   }
 
   /// Navigation basée sur le rôle utilisateur

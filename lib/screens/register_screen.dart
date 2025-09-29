@@ -26,10 +26,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  String _role = "AVS";
+  String _role = AppConstants.roleAvs; // ✅ CORRIGÉ - utilise la constante
   bool _isLoading = false;
 
-  /// Aller à l’étape suivante
+  /// Aller à l'étape suivante
   void _nextStep() {
     if (_formKey.currentState?.validate() ?? false) {
       if (_currentStep < 2) {
@@ -40,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// Retour à l’étape précédente
+  /// Retour à l'étape précédente
   void _previousStep() {
     if (_currentStep > 0) {
       setState(() => _currentStep--);
@@ -51,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _registerUser() async {
     setState(() => _isLoading = true);
     try {
-      // 1️⃣ Création de l’utilisateur Firebase Auth
+      // 1️⃣ Création de l'utilisateur Firebase Auth
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -60,19 +60,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 2️⃣ Enregistrement des infos dans Firestore
       await FirebaseFirestore.instance
-          .collection("users")
+          .collection(AppConstants.usersCollection)
           .doc(userCredential.user!.uid)
           .set({
+        "name":
+            "${_firstNameController.text.trim()} ${_lastNameController.text.trim()}",
         "firstName": _firstNameController.text.trim(),
         "lastName": _lastNameController.text.trim(),
         "email": _emailController.text.trim(),
         "phone": _phoneController.text.trim(),
         "address": _addressController.text.trim(),
-        "role": _role,
+        "role": _role, // ✅ Stocke le rôle normalisé
         "createdAt": FieldValue.serverTimestamp(),
       });
 
-      // 3️⃣ Redirection vers Home (ou autre page)
+      // 3️⃣ Redirection vers Home
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.home);
 
@@ -232,7 +234,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             cursorColor: AppColors.medicalBlue,
             decoration: _inputDecoration(label: "Téléphone", icon: Icons.phone),
             keyboardType: TextInputType.phone,
-            validator: (v) => v!.isEmpty ? "Veuillez entrer un numéro" : null,
+            validator: (v) {
+              if (v!.isEmpty) return "Veuillez entrer un numéro";
+              if (!RegExp(RegexConstants.phone).hasMatch(v)) {
+                return "Numéro de téléphone français invalide";
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -245,14 +253,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             value: _role,
-            style: const TextStyle(color: AppColors.darkText),
             decoration: _inputDecoration(label: "Rôle", icon: Icons.group),
-            items: const [
-              DropdownMenuItem(value: "AVS", child: Text("AVS")),
-              DropdownMenuItem(value: "Famille/Tuteur", child: Text("Famille")),
+            items: [
               DropdownMenuItem(
-                  value: "Coordonateur", child: Text("Coordonnateur")),
-              DropdownMenuItem(value: "Admin", child: Text("Admin")),
+                value: AppConstants.roleAvs, // ✅ constante
+                child: Text(AppConstants.roleLabels[AppConstants.roleAvs]!),
+              ),
+              DropdownMenuItem(
+                value: AppConstants.roleFamille, // ✅ constante
+                child: Text(AppConstants.roleLabels[AppConstants.roleFamille]!),
+              ),
+              DropdownMenuItem(
+                value: AppConstants.roleCoordinateur, // ✅ constante
+                child: Text(
+                    AppConstants.roleLabels[AppConstants.roleCoordinateur]!),
+              ),
+              DropdownMenuItem(
+                value: AppConstants.roleAdmin, // ✅ constante
+                child: Text(AppConstants.roleLabels[AppConstants.roleAdmin]!),
+              ),
             ],
             onChanged: (v) => setState(() => _role = v!),
           ),
@@ -283,7 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: const TextStyle(color: AppColors.darkText)),
           Text("🏠 Adresse : ${_addressController.text}",
               style: const TextStyle(color: AppColors.darkText)),
-          Text("👥 Rôle : $_role",
+          Text("👥 Rôle : ${AppConstants.roleLabels[_role] ?? _role}",
               style: const TextStyle(color: AppColors.darkText)),
           const SizedBox(height: 30),
           const Text(

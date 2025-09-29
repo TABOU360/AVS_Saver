@@ -31,11 +31,77 @@ class AppConstants {
   static const String bookingsCollection = 'bookings';
   static const String notificationsCollection = 'notifications';
 
-  // Rôles utilisateurs
-  static const String roleFamille = 'famille';
-  static const String roleAvs = 'avs';
-  static const String roleCoordinateur = 'coordinateur';
+  // Rôles canoniques (stockés en base)
   static const String roleAdmin = 'admin';
+  static const String roleCoordinateur = 'coordinateur';
+  static const String roleAvs = 'avs';
+  static const String roleFamille = 'famille';
+
+  // Libellés utilisateurs (UI)
+  static const Map<String, String> roleLabels = {
+    roleAdmin: 'Admin',
+    roleCoordinateur: 'Coordinateur',
+    roleAvs: 'AVS',
+    roleFamille: 'Famille/Tuteur',
+  };
+
+  // Erreurs / messages
+  static const String errorPermission =
+      'Vous n\'avez pas la permission pour accéder à cette page.';
+  static const String errorNetwork = 'Erreur de connexion réseau';
+  static const String errorUnknown = 'Une erreur inattendue s\'est produite';
+  static const String errorNotFound = 'Ressource non trouvée';
+  static const String errorValidation = 'Données invalides';
+
+  /// Normalise un rôle libre (depuis UI / DB) vers une valeur canonique.
+  /// Gère variantes, fautes d'orthographe et labels humains.
+  static String normalizeRole(String? role) {
+    final r = (role ?? '').trim().toLowerCase();
+
+    if (r.isEmpty) return roleFamille;
+
+    // ADMIN
+    if (r == roleAdmin ||
+        r == 'administrator' ||
+        r == 'Admin' ||
+        r.contains('admin')) {
+      return roleAdmin;
+    }
+
+    // COORDINATEUR
+    if (r == roleCoordinateur ||
+        r.contains('coord') ||
+        r.contains('coordinateur') ||
+        r.contains('coordon') ||
+        r.contains('coordonateur') ||
+        r.contains('coordonateur')) {
+      return roleCoordinateur;
+    }
+
+    // AVS
+    if (r == roleAvs ||
+        r.contains('avs') ||
+        r.contains('aux') ||
+        r.contains('aide') ||
+        r.contains('soin') ||
+        r.contains('dipl') || // diplôme / diplo...
+        r.contains('diplôm') ||
+        r.contains('diplome')) {
+      return roleAvs;
+    }
+
+    // FAMILLE / TUTEUR
+    if (r == roleFamille ||
+        r.contains('fam') ||
+        r.contains('parent') ||
+        r.contains('tuteur') ||
+        r.contains('proche')) {
+      return roleFamille;
+    }
+
+    // fallback conservateur
+    return roleFamille;
+  }
 
   // Statuts de mission
   static const String missionPending = 'pending';
@@ -70,20 +136,13 @@ class AppConstants {
   static const String placeholderAvatar =
       'assets/images/placeholder_avatar.png';
 
-  // Erreurs communes
-  static const String errorNetwork = 'Erreur de connexion réseau';
-  static const String errorUnknown = 'Une erreur inattendue s\'est produite';
-  static const String errorPermission = 'Permissions insuffisantes';
-  static const String errorNotFound = 'Ressource non trouvée';
-  static const String errorValidation = 'Données invalides';
-
   // Messages de succès
   static const String successAccountCreated = 'Compte créé avec succès';
   static const String successPasswordReset = 'Email de réinitialisation envoyé';
   static const String successBookingSent = 'Demande envoyée au coordinateur';
   static const String successProfileUpdated = 'Profil mis à jour';
 
-  // Compétences AVS prédéfinies
+  // Compétences AVS prédéfinies (exemples)
   static const List<String> avsSkills = [
     'Autisme',
     'Troubles DYS',
@@ -91,28 +150,14 @@ class AppConstants {
     'Déficience visuelle',
     'Déficience auditive',
     'Troubles comportementaux',
-    'Déficience intellectuelle',
-    'Troubles de l\'attention',
-    'Épilepsie',
-    'Diabète',
-    'Troubles alimentaires',
-    'Communication alternative',
   ];
 
-  // Conditions médicales courantes
+  // Conditions médicales courantes (exemples)
   static const List<String> medicalConditions = [
     'Autisme',
     'Trisomie 21',
     'Paralysie cérébrale',
     'Spina bifida',
-    'Dystrophie musculaire',
-    'Épilepsie',
-    'Diabète type 1',
-    'Troubles DYS',
-    'TDAH',
-    'Déficience visuelle',
-    'Déficience auditive',
-    'Troubles du spectre autistique',
   ];
 
   // Durées par défaut (en minutes)
@@ -150,6 +195,6 @@ class StorageConstants {
 
 class RegexConstants {
   static const String email = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
-  static const String phone = r'^(\+33|0)[1-9](\d{8})$';
+  static const String phone = r'^(\+237|0)[1-9](\d{8})$';
   static const String postalCode = r'^\d{5}$';
 }

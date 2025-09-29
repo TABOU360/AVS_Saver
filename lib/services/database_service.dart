@@ -22,6 +22,8 @@ class DatabaseService {
     required String email,
     required String name,
     required String role,
+    String? phone,
+    String? address,
     Map<String, dynamic>? additionalData,
   }) async {
     try {
@@ -30,6 +32,8 @@ class DatabaseService {
         'email': email,
         'name': name,
         'role': role,
+        'phone': phone,
+        'address': address,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'isActive': true,
@@ -60,6 +64,11 @@ class DatabaseService {
           email: data['email'] ?? '',
           name: data['name'] ?? '',
           role: data['role'] ?? 'AVS',
+          phone: data['phone'],
+          address: data['address'],
+          createdAt: data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : null,
         );
       }
       return null;
@@ -217,7 +226,7 @@ class DatabaseService {
 
       return docRef.id;
     } catch (e) {
-      throw Exception('Erreur lors de l\'ajout du bénéficiaire: $e');
+      throw Exception("Erreur lors de l'ajout du bénéficiaire: $e");
     }
   }
 
@@ -313,7 +322,7 @@ class DatabaseService {
           start: (data['start'] as Timestamp?)?.toDate() ?? DateTime.now(),
           end: (data['end'] as Timestamp?)?.toDate() ?? DateTime.now(),
           status: _stringToMissionStatus(data['status']),
-          familyId: '',
+          familyId: data['familyId'] ?? '',
         );
       }).toList();
     } catch (e) {
@@ -355,7 +364,7 @@ class DatabaseService {
         bio: data['bio'] ?? '',
       );
     } catch (e) {
-      throw Exception('Erreur lors de la récupération de l’AVS: $e');
+      throw Exception("Erreur lors de la récupération de l'AVS: $e");
     }
   }
 
@@ -382,7 +391,7 @@ class DatabaseService {
           .collection(AppConstants.messagesCollection)
           .add(messageData);
     } catch (e) {
-      throw Exception('Erreur lors de l\'envoi du message: $e');
+      throw Exception("Erreur lors de l'envoi du message: $e");
     }
   }
 

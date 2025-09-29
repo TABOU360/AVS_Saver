@@ -1,7 +1,10 @@
+// lib/main.dart - Version corrigée avec tous les imports
+import 'package:avs_saver/widgets/auth_wrapper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'core/app_routes.dart';
 import 'core/app_theme.dart';
 import 'firebase_options.dart';
@@ -75,7 +78,7 @@ class AVSApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       navigatorKey: NavigationService().navigatorKey,
-      home: const SplashScreen(),
+      home: const AuthWrapper(),
       routes: {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.register: (_) => const RegisterScreen(),

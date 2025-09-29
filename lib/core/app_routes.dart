@@ -15,4 +15,16 @@ class AppRoutes {
   static const String avsDashboard = '/avs_dashboard';
   static const String familyDashboard = '/family_dashboard';
   static const String notifications = '/notifications';
+  static const String splash = '/splash';
+
+  // Routes pour les paramètres et configuration
+  static const String settings = '/settings';
+  static const String help = '/help';
+  static const String about = '/about';
+
+  // Routes pour les rapports (admin/coordinateur)
+  static const String reports = '/reports';
+  static const String analytics = '/analytics';
+  static const String userManagement = '/user_management';
+  static const String systemLogs = '/system_logs';
 }

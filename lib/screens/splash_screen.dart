@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     // Petite animation pulsée et infinie
     _ctrl = AnimationController(
-        vsync: this, duration: Duration(milliseconds: 1400));
+        vsync: this, duration: const Duration(milliseconds: 1400));
     _scale = Tween<double>(begin: 0.95, end: 1.08)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
     _ctrl.addStatusListener((status) {

@@ -1,185 +1,350 @@
+// lib/widgets/auth_wrapper.dart - VERSION CORRIGÉE
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/database_service.dart';
+import '../services/navigation_service.dart';
+import '../models/user.dart';
+import '../utils/constants.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/avs_dashboard_screen.dart';
+import '../screens/family_dashboard_screen.dart';
+import '../screens/coordinator_screen.dart';
+import '../screens/admin_screen.dart';
 import '../screens/home_screen.dart';
-import '../services/database_service.dart';
+import 'loading_widget.dart';
 
-/// Widget qui gère automatiquement l'état d'authentification
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // En cours de chargement
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen();
-        }
-
-        // Erreur de connexion
-        if (snapshot.hasError) {
-          return const _ErrorScreen();
-        }
-
-        // Utilisateur connecté
-        if (snapshot.hasData && snapshot.data != null) {
-          return FutureBuilder<bool>(
-            future: _checkUserProfile(snapshot.data!),
-            builder: (context, profileSnapshot) {
-              if (profileSnapshot.connectionState == ConnectionState.waiting) {
-                return const SplashScreen();
-              }
-
-              if (profileSnapshot.data == true) {
-                return const HomeScreen(); // Profil complet
-              } else {
-                return const _ProfileIncompleteScreen(); // Profil à compléter
-              }
-            },
-          );
-        }
-
-        // Utilisateur non connecté
-        return const LoginScreen();
-      },
-    );
-  }
-
-  /// Vérifie si le profil utilisateur est complet
-  Future<bool> _checkUserProfile(User user) async {
-    try {
-      final databaseService = DatabaseService();
-      final userProfile = await databaseService.getUserProfile(user.uid);
-
-      // Vérifier si le profil existe et est complet
-      return userProfile != null &&
-          userProfile.name.isNotEmpty &&
-          userProfile.role.isNotEmpty;
-    } catch (e) {
-      print('Erreur vérification profil: $e');
-      return false;
-    }
-  }
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-/// Écran d'erreur générique
-class _ErrorScreen extends StatelessWidget {
-  const _ErrorScreen();
+class _AuthWrapperState extends State<AuthWrapper> {
+  final DatabaseService _db = DatabaseService();
+  User? _firebaseUser;
+  AppUser? _appUser;
+  AuthState _authState = AuthState.checking;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAuth();
+  }
+
+  Future<void> _initializeAuth() async {
+    FirebaseAuth.instance.authStateChanges().listen(_handleAuthStateChange);
+  }
+
+  Future<void> _handleAuthStateChange(User? firebaseUser) async {
+    if (!mounted) return;
+
+    setState(() {
+      _firebaseUser = firebaseUser;
+      _authState = AuthState.checking;
+      _errorMessage = null;
+    });
+
+    try {
+      if (firebaseUser == null) {
+        setState(() {
+          _appUser = null;
+          _authState = AuthState.unauthenticated;
+        });
+        return;
+      }
+
+      final appUser = await _db.getUserProfile(firebaseUser.uid);
+
+      if (appUser == null) {
+        await _handleMissingProfile(firebaseUser);
+        return;
+      }
+
+      if (!await _isAccountActive(appUser)) {
+        setState(() {
+          _authState = AuthState.suspended;
+          _errorMessage =
+              'Votre compte a été suspendu. Contactez l\'administrateur.';
+        });
+        return;
+      }
+
+      setState(() {
+        _appUser = appUser;
+        _authState = AuthState.authenticated;
+      });
+    } catch (e) {
+      debugPrint('Erreur lors de la vérification de l\'utilisateur: $e');
+      setState(() {
+        _authState = AuthState.error;
+        _errorMessage = 'Erreur de connexion: ${e.toString()}';
+      });
+    }
+  }
+
+  Future<void> _handleMissingProfile(User firebaseUser) async {
+    try {
+      await _db.createUserProfile(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        name: firebaseUser.displayName ?? 'Utilisateur',
+        role: AppConstants.roleFamille,
+      );
+
+      final appUser = await _db.getUserProfile(firebaseUser.uid);
+
+      if (appUser != null) {
+        setState(() {
+          _appUser = appUser;
+          _authState = AuthState.authenticated;
+        });
+      } else {
+        throw Exception('Impossible de créer le profil utilisateur');
+      }
+    } catch (e) {
+      debugPrint('Erreur création profil: $e');
+      setState(() {
+        _authState = AuthState.error;
+        _errorMessage = 'Erreur lors de la création du profil: ${e.toString()}';
+      });
+    }
+  }
+
+  Future<bool> _isAccountActive(AppUser user) async {
+    // TODO: Implémenter la vérification du statut du compte
+    return true;
+  }
+
+  Future<void> _retry() async {
+    setState(() {
+      _authState = AuthState.checking;
+      _errorMessage = null;
+    });
+    await _handleAuthStateChange(_firebaseUser);
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      debugPrint('Erreur déconnexion: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    // SUPPRIMEZ MaterialApp ici - retournez directement le widget
+    return _buildCurrentScreen();
+  }
+
+  Widget _buildCurrentScreen() {
+    switch (_authState) {
+      case AuthState.checking:
+        return _buildCheckingScreen();
+
+      case AuthState.unauthenticated:
+        return const LoginScreen();
+
+      case AuthState.authenticated:
+        return _buildAuthenticatedScreen();
+
+      case AuthState.error:
+        return _buildErrorScreen();
+
+      case AuthState.suspended:
+        return _buildSuspendedScreen();
+
+      case AuthState.needsSetup:
+        return _buildSetupScreen();
+    }
+  }
+
+  Widget _buildCheckingScreen() {
+    return const Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red.shade400,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Une erreur est survenue',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Veuillez redémarrer l\'application',
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                // Forcer le rechargement de l'app
-                // ou naviguer vers l'écran de login
-              },
-              child: const Text('Réessayer'),
-            ),
-          ],
+        child: LoadingWidget(
+          message: 'Vérification de votre connexion...',
+          type: LoadingType.pulse,
+          size: 60,
         ),
       ),
     );
   }
-}
 
-/// Écran affiché quand le profil est incomplet
-class _ProfileIncompleteScreen extends StatelessWidget {
-  const _ProfileIncompleteScreen();
+  Widget _buildAuthenticatedScreen() {
+    if (_appUser == null) {
+      return _buildErrorScreen();
+    }
 
-  @override
-  Widget build(BuildContext context) {
+    // Pour les rôles non reconnus ou comme écran temporaire
+    return const HomeScreen();
+  }
+
+  Widget _buildErrorScreen() {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(32),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.account_circle_outlined,
+                Icons.error_outline,
+                size: 80,
+                color: Colors.red.shade400,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Erreur de connexion',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage ?? 'Une erreur inattendue s\'est produite.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _signOut,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Se déconnecter'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _retry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuspendedScreen() {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.block,
                 size: 80,
                 color: Colors.orange.shade400,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Profil incomplet',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Votre profil n\'est pas encore configuré. '
-                'Veuillez compléter vos informations pour continuer.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Naviguer vers l'écran de completion du profil
-                    // ou vers l'inscription selon le contexte
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              Text(
+                'Compte suspendu',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade600,
                     ),
-                  ),
-                  child: const Text(
-                    'Compléter le profil',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              TextButton(
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
+              Text(
+                _errorMessage ?? 'Votre compte a été temporairement suspendu.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // TODO: Ouvrir le support ou contact
+                    },
+                    icon: const Icon(Icons.support_agent),
+                    label: const Text('Contacter le support'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _signOut,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Se déconnecter'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSetupScreen() {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.settings,
+                size: 80,
+                color: Colors.blue.shade400,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Configuration requise',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Veuillez compléter la configuration de votre compte.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: Navigation vers écran de setup
                 },
-                child: const Text(
-                  'Se déconnecter',
-                  style: TextStyle(color: Colors.grey),
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Continuer la configuration'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -188,4 +353,13 @@ class _ProfileIncompleteScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+enum AuthState {
+  checking,
+  unauthenticated,
+  authenticated,
+  error,
+  suspended,
+  needsSetup,
 }

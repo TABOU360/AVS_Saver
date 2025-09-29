@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_routes.dart';
 import '../services/auth_service.dart';
+import '../services/database_service.dart';
+import '../services/navigation_service.dart';
 import '../widgets/custom_button.dart';
 import '../utils/constants.dart';
 
@@ -18,6 +20,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+  final _databaseService = DatabaseService();
+  final _navigationService = NavigationService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -51,13 +55,18 @@ class _LoginScreenState extends State<LoginScreen> {
             .get();
 
         if (userDoc.exists) {
-          // Stocker les infos utilisateur (à adapter selon votre state management)
-          // Ex: Provider.of<UserProvider>(context, listen: false).setUser(userDoc.data());
-          debugPrint("Utilisateur connecté: ${user.email}");
-        }
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final userRole = userData['role'] ?? 'user';
 
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+          debugPrint("Utilisateur connecté: ${user.email}, rôle: $userRole");
+
+          // Redirection basée sur le rôle
+          await _redirectBasedOnRole(userRole);
+        } else {
+          // Si le document n'existe pas, rediriger vers home par défaut
+          if (mounted) {
+            _navigationService.navigateToHome();
+          }
         }
       }
     } on FirebaseAuthException catch (e) {
@@ -71,13 +80,35 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Une erreur inattendue s'est produite"),
+          SnackBar(
+              content: Text("Une erreur inattendue s'est produite: $e"),
               backgroundColor: AppColors.danger),
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _redirectBasedOnRole(String role) async {
+    if (!mounted) return;
+
+    switch (role) {
+      case AppConstants.roleAvs:
+        _navigationService.navigateTo(AppRoutes.avsDashboard);
+        break;
+      case AppConstants.roleFamille:
+        _navigationService.navigateTo(AppRoutes.familyDashboard);
+        break;
+      case AppConstants.roleCoordinateur:
+        _navigationService.navigateTo(AppRoutes.coordinator);
+        break;
+      case AppConstants.roleAdmin:
+        _navigationService.navigateTo(AppRoutes.admin);
+        break;
+      default:
+        _navigationService.navigateToHome();
+        break;
     }
   }
 
@@ -91,13 +122,19 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Email invalide';
       case 'user-disabled':
         return 'Ce compte a été désactivé';
+      case 'network-request-failed':
+        return 'Erreur de connexion réseau';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Réessayez plus tard';
       default:
-        return 'Erreur de connexion';
+        return 'Erreur de connexion: $errorCode';
     }
   }
 
   Future<void> _handleForgotPassword() async {
-    if (_emailController.text.isEmpty) {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Veuillez entrer votre email'),
@@ -107,8 +144,20 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez entrer un email valide'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
-      await _authService.resetPassword(email: _emailController.text.trim());
+      await _authService.resetPassword(email: email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -121,22 +170,55 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(e.toString()), backgroundColor: AppColors.danger),
+              content: Text("Erreur lors de l'envoi: ${e.toString()}"),
+              backgroundColor: AppColors.danger),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    // Implémentez la connexion Google
-    debugPrint("Google Sign-In clicked");
-    // await _authService.signInWithGoogle();
+    setState(() => _isLoading = true);
+    try {
+      // await _authService.signInWithGoogle();
+      // La redirection sera gérée par l'écouteur d'authentification
+      debugPrint("Connexion Google en cours...");
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Erreur Google Sign-In: ${e.toString()}"),
+              backgroundColor: AppColors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleFacebookSignIn() async {
-    // Implémentez la connexion Facebook
-    debugPrint("Facebook Sign-In clicked");
-    // await _authService.signInWithFacebook();
+    setState(() => _isLoading = true);
+    try {
+      // await _authService.signInWithFacebook();
+      debugPrint("Connexion Facebook en cours...");
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Erreur Facebook Sign-In: ${e.toString()}"),
+              backgroundColor: AppColors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleDemoMode() {
+    // Mode démo - navigation simple vers home
+    _navigationService.navigateToHome();
   }
 
   @override
@@ -263,7 +345,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: _handleForgotPassword,
+                              onPressed:
+                                  _isLoading ? null : _handleForgotPassword,
                               child: const Text('Mot de passe oublié ?',
                                   style: TextStyle(
                                       color: AppColors.medicalBlue,
@@ -275,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           CustomButton(
                             text: "Se connecter",
                             isLoading: _isLoading,
-                            onPressed: _handleLogin,
+                            onPressed: _isLoading ? null : _handleLogin,
                           ),
                           const SizedBox(height: 18),
                         ],
@@ -302,12 +385,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Social login buttons - maintenant cliquables
+                    // Social login buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         GestureDetector(
-                          onTap: _handleGoogleSignIn,
+                          onTap: _isLoading ? null : _handleGoogleSignIn,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -315,17 +398,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               border:
                                   Border.all(color: AppColors.surfaceBorder),
                             ),
-                            child: Image.asset(
-                              "assets/images/google.png",
-                              height: 32,
-                              width: 32,
+                            child: Opacity(
+                              opacity: _isLoading ? 0.5 : 1.0,
+                              child: Image.asset(
+                                "assets/images/google.png",
+                                height: 32,
+                                width: 32,
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(
-                            width: 18), // Correction: spécifier width
+                        const SizedBox(width: 18),
                         GestureDetector(
-                          onTap: _handleFacebookSignIn,
+                          onTap: _isLoading ? null : _handleFacebookSignIn,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -333,10 +418,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               border:
                                   Border.all(color: AppColors.surfaceBorder),
                             ),
-                            child: Image.asset(
-                              "assets/images/facebook.png",
-                              height: 32,
-                              width: 32,
+                            child: Opacity(
+                              opacity: _isLoading ? 0.5 : 1.0,
+                              child: Image.asset(
+                                "assets/images/facebook.png",
+                                height: 32,
+                                width: 32,
+                              ),
                             ),
                           ),
                         ),
@@ -350,12 +438,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Text("Pas encore de compte ? ",
                             style: TextStyle(color: AppColors.secondaryText)),
                         GestureDetector(
-                          onTap: () =>
-                              Navigator.pushNamed(context, AppRoutes.register),
-                          child: const Text(
+                          onTap: _isLoading
+                              ? null
+                              : () => Navigator.pushNamed(
+                                  context, AppRoutes.register),
+                          child: Text(
                             "S'inscrire",
                             style: TextStyle(
-                                color: AppColors.medicalBlue,
+                                color: _isLoading
+                                    ? AppColors.secondaryText
+                                    : AppColors.medicalBlue,
                                 fontWeight: FontWeight.w700),
                           ),
                         ),
@@ -365,8 +457,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pushReplacementNamed(
-                            context, AppRoutes.home),
+                        onPressed: _isLoading ? null : _handleDemoMode,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side:
@@ -375,8 +466,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(14)),
                           backgroundColor: Colors.transparent,
                         ),
-                        child: const Text('Continuer en mode démo',
-                            style: TextStyle(color: AppColors.darkText)),
+                        child: Text(
+                          'Continuer en mode démo',
+                          style: TextStyle(
+                            color: _isLoading
+                                ? AppColors.secondaryText
+                                : AppColors.darkText,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
